@@ -30,20 +30,29 @@ MODECOR_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
 MODECOR_PASSWORD = "#M0d3CoR2025!"
 
+# User-Agent “da browser” per evitare blocchi banali lato server/WAF
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    )
+}
+
 
 def call_modecor_products():
     """
     Chiama l'endpoint prodotti Modecor con autenticazione Basic.
-    Restituisce il testo grezzo della risposta o solleva eccezione.
+    Restituisce l'oggetto Response di requests.
     """
     response = requests.get(
         MODECOR_URL,
         auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
+        headers=HEADERS,
         timeout=30,
         verify=False,  # <<--- certificato SSL non verificato
     )
-    response.raise_for_status()
-    return response.text
+    return response
 
 
 # -------------------------------------------------
@@ -61,14 +70,26 @@ st.caption(
 if st.button("🔄 Chiama API Modecor"):
     with st.spinner("Chiamata in corso..."):
         try:
-            raw_output = call_modecor_products()
+            resp = call_modecor_products()
 
-            st.success("Risposta ricevuta dall'API Modecor.")
-            st.markdown("### Output grezzo (prime 10.000 battute):")
-            st.code(raw_output[:10000], language="text")
+            st.markdown(f"**HTTP status code:** `{resp.status_code}`")
 
-        except requests.exceptions.HTTPError as e:
-            st.error(f"Errore HTTP nella chiamata all'API Modecor: {e}")
+            if resp.status_code == 200:
+                st.success("Risposta ricevuta dall'API Modecor (200 OK).")
+                st.markdown("### Output grezzo (prime 10.000 battute):")
+                st.code(resp.text[:10000], language="text")
+            else:
+                st.error(
+                    f"Chiamata completata ma il server ha risposto con codice "
+                    f"non OK: {resp.status_code}"
+                )
+
+                st.markdown("### Corpo della risposta (utile per capire il 403/errori):")
+                st.code(resp.text[:8000], language="html")
+
+                st.markdown("### Header di risposta (debug):")
+                st.json(dict(resp.headers))
+
         except requests.exceptions.Timeout:
             st.error("Timeout nella chiamata all'API Modecor.")
         except requests.exceptions.RequestException as e:
