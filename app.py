@@ -46,7 +46,7 @@ def call_modecor_products():
         auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
         headers=HEADERS,
         timeout=30,
-        verify=true,
+        verify=True,
     )
 
 
