@@ -1,26 +1,9 @@
 import requests
 from requests.auth import HTTPBasicAuth
-import streamlit as st
+import urllib3
 
-# -------------------------------------------------
-# CONFIGURAZIONE BASE STREAMLIT
-# -------------------------------------------------
-
-st.set_page_config(
-    page_title="Modecor API Viewer",
-    page_icon="🧁",
-    layout="wide"
-)
-
-st.title("Modecor – Lettura prodotti via API")
-st.write(
-    "Clicca il pulsante qui sotto per chiamare l'API "
-    "`it-get-products.php` di Modecor con autenticazione Basic."
-)
-
-# -------------------------------------------------
-# CREDENZIALI API MODECOR (come da tua richiesta)
-# -------------------------------------------------
+# disabilita i warning "InsecureRequestWarning"
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 MODECOR_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
@@ -36,10 +19,10 @@ def call_modecor_products():
         MODECOR_URL,
         auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
         timeout=30,
+        verify=False,  # <--- AGGIUNTO: non verifica il certificato SSL
     )
     response.raise_for_status()
     return response.text
-
 
 # -------------------------------------------------
 # UI: PULSANTE PER CHIAMARE L'API
