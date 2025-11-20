@@ -6,7 +6,7 @@ import base64
 from openai import OpenAI
 import json
 from typing import List, Dict, Optional
-import time
+import os
 
 # -------------------------------------------------
 # CONFIGURAZIONE
@@ -28,13 +28,27 @@ MODECOR_API_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
 MODECOR_PASSWORD = "#M0d3CoR2025!"
 
-# OpenAI API - Legge da Streamlit Cloud Secrets
+# OpenAI API - Gestione robusta con fallback multipli
+OPENAI_API_KEY = None
+
+# Metodo 1: Prova secrets con chiave diretta
 try:
-    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-except KeyError:
-    OPENAI_API_KEY = ""
-except FileNotFoundError:
-    OPENAI_API_KEY = ""
+    if "OPENAI_API_KEY" in st.secrets:
+        OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+except:
+    pass
+
+# Metodo 2: Prova secrets con sezione [default]
+if not OPENAI_API_KEY:
+    try:
+        if "default" in st.secrets:
+            OPENAI_API_KEY = st.secrets["default"]["OPENAI_API_KEY"]
+    except:
+        pass
+
+# Metodo 3: Prova environment variables
+if not OPENAI_API_KEY:
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -105,15 +119,6 @@ st.markdown("""
         border-left: 5px solid #FCD34D;
     }
     
-    .analysis-card {
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        margin: 1rem 0;
-        border: 3px solid #DC2626;
-        box-shadow: 0 5px 20px rgba(220, 38, 38, 0.2);
-    }
-    
     .product-card {
         background: white;
         border: 2px solid #FCD34D;
@@ -128,53 +133,6 @@ st.markdown("""
         transform: translateY(-5px);
         box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
         border-color: #DC2626;
-    }
-    
-    .product-title {
-        color: #DC2626;
-        font-weight: 700;
-        font-size: 1.2rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .product-link {
-        display: inline-block;
-        background: #DC2626;
-        color: white;
-        padding: 0.5rem 1.5rem;
-        border-radius: 25px;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        margin-top: 0.5rem;
-    }
-    
-    .product-link:hover {
-        background: #991B1B;
-        transform: scale(1.05);
-    }
-    
-    .step-section {
-        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-        padding: 2rem;
-        border-radius: 12px;
-        margin: 1.5rem 0;
-        border-left: 5px solid #FCD34D;
-        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
-    }
-    
-    .step-number {
-        display: inline-block;
-        background: #DC2626;
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        text-align: center;
-        line-height: 40px;
-        font-weight: 700;
-        font-size: 1.2rem;
-        margin-right: 1rem;
     }
     
     .phase-indicator {
@@ -194,48 +152,6 @@ st.markdown("""
         padding: 3rem;
         margin: 2rem 0;
         box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    }
-    
-    .ingredient-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0;
-    }
-    
-    .ingredient-table th {
-        background: #DC2626;
-        color: white;
-        padding: 1rem;
-        text-align: left;
-    }
-    
-    .ingredient-table td {
-        padding: 0.8rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .badge {
-        display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-right: 0.5rem;
-    }
-    
-    .badge-exact {
-        background: #10b981;
-        color: white;
-    }
-    
-    .badge-alternative {
-        background: #f59e0b;
-        color: white;
-    }
-    
-    .loading-spinner {
-        text-align: center;
-        padding: 2rem;
     }
     
     .stButton>button {
@@ -272,11 +188,9 @@ if "products_catalog" not in st.session_state:
 if "conversation_data" not in st.session_state:
     st.session_state.conversation_data = {}
 if "phase" not in st.session_state:
-    st.session_state.phase = "upload"  # upload -> analysis -> conversation -> final
+    st.session_state.phase = "upload"
 if "initial_analysis" not in st.session_state:
     st.session_state.initial_analysis = None
-if "gpt_messages" not in st.session_state:
-    st.session_state.gpt_messages = []
 
 # -------------------------------------------------
 # FUNZIONI API MODECOR
@@ -326,12 +240,40 @@ def prepare_products_for_ai(products: List[Dict], max_products: int = 1500) -> s
 # FUNZIONI OPENAI GPT-4 VISION
 # -------------------------------------------------
 def init_openai_client() -> Optional[OpenAI]:
-    """Inizializza client OpenAI"""
+    """Inizializza client OpenAI con debug info"""
+    
+    # Debug Panel (rimuovibile dopo verifica)
+    with st.expander("🔍 Debug Info - Configurazione API", expanded=False):
+        st.write("**Secrets disponibili:**", list(st.secrets.keys()) if hasattr(st, 'secrets') and st.secrets else "Nessuno")
+        st.write("**API Key caricata:**", "✅ Sì" if OPENAI_API_KEY else "❌ No")
+        if OPENAI_API_KEY:
+            st.write("**Lunghezza API Key:**", len(OPENAI_API_KEY))
+            st.write("**Prefisso API Key:**", OPENAI_API_KEY[:10] + "..." if len(OPENAI_API_KEY) > 10 else "Errore")
+    
     if not OPENAI_API_KEY:
-        st.error("⚠️ **API Key OpenAI mancante!** Configurala in `.streamlit/secrets.toml`:")
-        st.code('[default]\nOPENAI_API_KEY = "sk-proj-..."')
+        st.error("⚠️ **API Key OpenAI mancante!**")
+        st.info("""
+        **📝 Come configurarla su Streamlit Cloud:**
+        
+        1. Clicca su **'Settings'** (⚙️ in alto a destra)
+        2. Vai in **'Secrets'** nel menu a sinistra
+        3. Incolla questo testo:
+```
+        [default]
+        OPENAI_API_KEY = "sk-proj-LA_TUA_NUOVA_API_KEY"
+```
+        
+        4. Clicca **'Save'**
+        5. Torna all'app e clicca **'Reboot app'** dal menu (⋮)
+        6. Aspetta 1-2 minuti che l'app si riavvii
+        """)
+        st.stop()
+    
+    try:
+        return OpenAI(api_key=OPENAI_API_KEY)
+    except Exception as e:
+        st.error(f"❌ Errore inizializzazione OpenAI: {e}")
         return None
-    return OpenAI(api_key=OPENAI_API_KEY)
 
 def encode_image_to_base64(uploaded_file) -> str:
     """Converte immagine caricata in base64 per OpenAI"""
@@ -587,7 +529,7 @@ def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[
     """Chiama GPT-4 Vision per analizzare l'immagine"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",  # gpt-4o ha vision integrata ed è più veloce
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
@@ -600,7 +542,7 @@ def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{image_base64}",
-                                "detail": "high"  # Alta qualità per analisi dettagliata
+                                "detail": "high"
                             }
                         }
                     ]
