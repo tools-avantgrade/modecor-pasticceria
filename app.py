@@ -32,14 +32,14 @@ OPENAI_API_KEY = None
 try:
     if "OPENAI_API_KEY" in st.secrets:
         OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-except:
+except Exception:
     pass
 
 if not OPENAI_API_KEY:
     try:
         if "default" in st.secrets:
             OPENAI_API_KEY = st.secrets["default"]["OPENAI_API_KEY"]
-    except:
+    except Exception:
         pass
 
 if not OPENAI_API_KEY:
@@ -68,7 +68,6 @@ st.markdown("""
         margin: 0 auto !important;
     }
     
-    /* Su mobile, usa tutta la larghezza */
     @media (max-width: 768px) {
         .main .block-container {
             max-width: 100% !important;
@@ -77,7 +76,6 @@ st.markdown("""
         }
     }
     
-    /* ===== HEADER ===== */
     .main-title {
         color: #DC2626;
         text-align: center;
@@ -93,7 +91,6 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* ===== SEZIONE UPLOAD - Centrata ===== */
     .upload-section {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
         padding: 2.5rem 2rem;
@@ -117,20 +114,17 @@ st.markdown("""
         font-size: 0.95rem;
     }
     
-    /* ===== FILE UPLOADER - Centrato ===== */
     [data-testid="stFileUploader"] {
         max-width: 100%;
         margin: 1rem auto !important;
     }
     
-    /* ===== CONTENITORE UPLOAD - Centrato ===== */
     .upload-container {
         max-width: 100%;
         margin: 2rem auto;
         text-align: center;
     }
     
-    /* Immagine centrata */
     .upload-container [data-testid="stImage"] {
         display: block !important;
         margin: 0 auto 1.5rem auto !important;
@@ -148,7 +142,6 @@ st.markdown("""
         margin: 0 auto !important;
     }
     
-    /* Titolo e testo centrati */
     .upload-container h3 {
         color: #DC2626;
         margin: 1.5rem 0 0.5rem 0;
@@ -166,7 +159,6 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* ===== IMMAGINI GENERALI ===== */
     [data-testid="stImage"] {
         max-width: 100% !important;
         margin: 0 auto !important;
@@ -183,11 +175,6 @@ st.markdown("""
         display: block;
     }
     
-    /* ===== SIDEBAR - Immagine piccola ===== */
-    [data-testid="stSidebar"] [data-testid="stImage"] {
-        max-width: 100% !important;
-    }
-    
     [data-testid="stSidebar"] [data-testid="stImage"] img {
         max-height: 300px !important;
         border-radius: 8px;
@@ -197,13 +184,11 @@ st.markdown("""
         background: #f9fafb;
     }
     
-    /* ===== CHAT MESSAGES ===== */
     .stChatMessage {
         max-width: 100%;
         margin-bottom: 1rem;
     }
     
-    /* ===== OUTPUT FINALE ===== */
     .final-guide {
         background: white;
         border-radius: 12px;
@@ -301,7 +286,6 @@ st.markdown("""
         margin: 2rem 0;
     }
     
-    /* ===== PULSANTI ===== */
     .stButton>button {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
         color: white;
@@ -319,13 +303,11 @@ st.markdown("""
         transform: translateY(-1px);
     }
     
-    /* Pulsante genera guida */
     .generate-btn {
         margin: 2rem 0 1rem 0;
         text-align: center;
     }
     
-    /* ===== BADGE FASE ===== */
     .phase-badge {
         display: inline-block;
         background: linear-gradient(90deg, #DC2626 0%, #991B1B 100%);
@@ -338,7 +320,6 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
     }
     
-    /* ===== RESPONSIVE - Mobile ===== */
     @media (max-width: 768px) {
         .upload-section {
             max-width: 100%;
@@ -428,9 +409,10 @@ def init_openai_client() -> Optional[OpenAI]:
         st.stop()
     
     try:
-        return OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        return client
     except Exception as e:
-        st.error(f"Errore OpenAI: {e}")
+        st.error(f"Errore inizializzazione OpenAI: {e}")
         return None
 
 def encode_image_to_base64(uploaded_file) -> str:
@@ -558,11 +540,12 @@ def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[
                     }
                 ]
             }],
-            max_tokens=4096,
+            max_tokens=1024,
             temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
+        st.error(f"Errore durante l'analisi della torta con GPT Vision: {e}")
         print(f"Errore GPT Vision: {e}")
         return None
 
@@ -572,11 +555,12 @@ def call_gpt_conversation(client: OpenAI, messages: List[Dict]) -> Optional[str]
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            max_tokens=4096,
+            max_tokens=2048,
             temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
+        st.error(f"Errore durante la conversazione con GPT: {e}")
         print(f"Errore GPT: {e}")
         return None
 
@@ -626,19 +610,19 @@ def main():
     st.markdown('<p class="subtitle">Il tuo assistente per decorazioni professionali</p>', 
                 unsafe_allow_html=True)
     
-    # Inizializza
+    # Inizializza client OpenAI
     client = init_openai_client()
     if not client:
         st.stop()
     
-    # Carica catalogo
+    # Carica catalogo prodotti
     if st.session_state.products_catalog is None:
         with st.spinner("Caricamento catalogo..."):
             products = fetch_modecor_products()
             if products:
                 st.session_state.products_catalog = products
             else:
-                st.error("Impossibile caricare il catalogo.")
+                st.error("Impossibile caricare il catalogo prodotti Modecor.")
                 st.stop()
         
     # ===== FASE UPLOAD =====
@@ -657,23 +641,18 @@ def main():
         )
         
         if uploaded_file:
-            # Spazio prima
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Immagine centrata
-            st.image(uploaded_file, width='stretch')
+            # Immagine centrata, uso tutta la larghezza del container
+            st.image(uploaded_file, use_container_width=True)
             
-            # Spazio dopo
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Testo centrato
             st.markdown("<h3 style='text-align: center; color: #DC2626;'>✅ Immagine Pronta</h3>", unsafe_allow_html=True)
             st.markdown("<p style='text-align: center; color: #6b7280;'>Clicca il pulsante per iniziare l'analisi AI</p>", unsafe_allow_html=True)
             
-            # Pulsante centrato
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.button("🚀 Analizza Torta", width='stretch', type="primary"):
+                if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
                     st.session_state.cake_image = uploaded_file
                     st.session_state.image_base64 = encode_image_to_base64(uploaded_file)
                     
@@ -693,22 +672,35 @@ def main():
                                 "content": analysis
                             })
                             st.session_state.phase = "conversation"
-                            st.rerun()
+                            # forziamo il rerun in modo compatibile
+                            try:
+                                st.rerun()
+                            except Exception:
+                                st.experimental_rerun()
+                        else:
+                            st.error("Non sono riuscito ad analizzare l'immagine. Riprova tra qualche secondo.")
     
     # ===== FASE CONVERSAZIONE =====
     elif st.session_state.phase == "conversation":
         # Sidebar
         with st.sidebar:
             if st.session_state.cake_image:
-                st.image(st.session_state.cake_image, width='stretch')
+                st.image(st.session_state.cake_image, use_container_width=True)
             
             st.markdown("---")
             st.metric("Messaggi", len(st.session_state.messages))
             
-            if st.button("Nuova Torta", width='stretch'):
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
+            if st.button("Nuova Torta", use_container_width=True):
+                # reset controllato dello stato
+                for key in ["messages", "cake_image", "image_base64",
+                            "products_catalog", "phase",
+                            "guide_generated", "all_info_collected"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                try:
+                    st.rerun()
+                except Exception:
+                    st.experimental_rerun()
         
         # Badge fase
         st.markdown('<div class="phase-badge">Chat Modecor AI</div>', unsafe_allow_html=True)
@@ -716,34 +708,34 @@ def main():
         # Mostra tutti i messaggi
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🧁"):
-                # Rimuovi il marker [INFO_COMPLETE] dalla visualizzazione
                 content = msg["content"].replace("[INFO_COMPLETE]", "").strip()
                 
-                # Se il messaggio contiene la guida finale (con <div class="final-guide">)
                 if '<div class="final-guide">' in content:
                     st.markdown(content, unsafe_allow_html=True)
                 else:
                     st.markdown(content)
         
-        # Pulsante genera guida (SOLO se tutte le info sono state raccolte)
+        # Pulsante genera guida (solo se info complete)
         if st.session_state.all_info_collected and not st.session_state.guide_generated:
             st.markdown('<div class="generate-btn">', unsafe_allow_html=True)
-            if st.button("✨ Genera Guida Completa", width='stretch', type="primary"):
+            if st.button("✨ Genera Guida Completa", use_container_width=True, type="primary"):
                 with st.spinner("Creazione guida personalizzata..."):
                     products_text = prepare_products_for_ai(st.session_state.products_catalog)
                     output = generate_final_guide(client, products_text)
                     if output:
-                        st.rerun()
+                        try:
+                            st.rerun()
+                        except Exception:
+                            st.experimental_rerun()
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Input SEMPRE attivo
-        if prompt := st.chat_input("Scrivi qui la tua risposta..."):
-            # Mostra subito messaggio utente
+        # Input chat sempre attivo
+        prompt = st.chat_input("Scrivi qui la tua risposta...")
+        if prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user", avatar="👤"):
                 st.markdown(prompt)
             
-            # Genera risposta AI
             with st.chat_message("assistant", avatar="🧁"):
                 with st.spinner(""):
                     products_text = prepare_products_for_ai(st.session_state.products_catalog)
@@ -759,11 +751,9 @@ def main():
                     response = call_gpt_conversation(client, gpt_msgs)
                     
                     if response:
-                        # Controlla se tutte le info sono state raccolte
                         if check_if_info_complete(response):
                             st.session_state.all_info_collected = True
                         
-                        # Mostra risposta senza il marker
                         display_response = response.replace("[INFO_COMPLETE]", "").strip()
                         st.markdown(display_response)
                         
@@ -771,8 +761,10 @@ def main():
                             "role": "assistant",
                             "content": response
                         })
-            
-            st.rerun()
+            try:
+                st.rerun()
+            except Exception:
+                st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
