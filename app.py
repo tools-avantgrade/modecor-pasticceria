@@ -60,7 +60,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* ===== CONTENITORE CENTRALE - Chat verticale stretta ===== */
+    /* ===== CONTENITORE CENTRALE - Tutto centrato ===== */
     .main .block-container {
         max-width: 700px !important;
         padding-left: 2rem !important;
@@ -197,7 +197,7 @@ st.markdown("""
         background: #f9fafb;
     }
     
-    /* ===== CHAT MESSAGES - Verticale stretta ===== */
+    /* ===== CHAT MESSAGES ===== */
     .stChatMessage {
         max-width: 100%;
         margin-bottom: 1rem;
@@ -661,7 +661,7 @@ def main():
             st.markdown("<br>", unsafe_allow_html=True)
             
             # Immagine centrata
-            st.image(uploaded_file, use_container_width=True)
+            st.image(uploaded_file, width='stretch')
             
             # Spazio dopo
             st.markdown("<br>", unsafe_allow_html=True)
@@ -673,7 +673,7 @@ def main():
             # Pulsante centrato
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
+                if st.button("🚀 Analizza Torta", width='stretch', type="primary"):
                     st.session_state.cake_image = uploaded_file
                     st.session_state.image_base64 = encode_image_to_base64(uploaded_file)
                     
@@ -700,12 +700,12 @@ def main():
         # Sidebar
         with st.sidebar:
             if st.session_state.cake_image:
-                st.image(st.session_state.cake_image, use_container_width=True)
+                st.image(st.session_state.cake_image, width='stretch')
             
             st.markdown("---")
             st.metric("Messaggi", len(st.session_state.messages))
             
-            if st.button("Nuova Torta", use_container_width=True):
+            if st.button("Nuova Torta", width='stretch'):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
@@ -728,7 +728,7 @@ def main():
         # Pulsante genera guida (SOLO se tutte le info sono state raccolte)
         if st.session_state.all_info_collected and not st.session_state.guide_generated:
             st.markdown('<div class="generate-btn">', unsafe_allow_html=True)
-            if st.button("✨ Genera Guida Completa", use_container_width=True, type="primary"):
+            if st.button("✨ Genera Guida Completa", width='stretch', type="primary"):
                 with st.spinner("Creazione guida personalizzata..."):
                     products_text = prepare_products_for_ai(st.session_state.products_catalog)
                     output = generate_final_guide(client, products_text)
