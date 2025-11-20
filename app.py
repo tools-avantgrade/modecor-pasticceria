@@ -137,6 +137,24 @@ st.markdown("""
     margin-bottom: 1rem;
 }
 
+/* Testo centrato */
+.upload-container h3 {
+    color: #DC2626;
+    margin: 1.5rem 0 0.5rem 0;
+    font-size: 1.3rem;
+    text-align: center;
+}
+
+.upload-container p {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Markdown centrato */
+.upload-container .stMarkdown {
+    text-align: center;
+}
 /* Testo nella sezione upload */
 .upload-info {
     background: #f9fafb;
