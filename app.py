@@ -102,6 +102,15 @@ st.markdown("""
         margin-bottom: 1.5rem;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         animation: fadeIn 0.5s ease-in;
+        color: #1f2937 !important;
+    }
+    
+    .chat-message strong {
+        color: #DC2626 !important;
+    }
+    
+    .chat-message * {
+        color: #1f2937 !important;
     }
     
     @keyframes fadeIn {
@@ -112,11 +121,13 @@ st.markdown("""
     .user-message {
         background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         border-left: 5px solid #DC2626;
+        color: #1f2937 !important;
     }
     
     .assistant-message {
         background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
         border-left: 5px solid #FCD34D;
+        color: #1f2937 !important;
     }
     
     .product-card {
@@ -127,6 +138,7 @@ st.markdown("""
         margin: 1rem 0;
         transition: all 0.3s ease;
         box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        color: #1f2937 !important;
     }
     
     .product-card:hover {
@@ -137,7 +149,7 @@ st.markdown("""
     
     .phase-indicator {
         background: linear-gradient(90deg, #DC2626 0%, #991B1B 100%);
-        color: white;
+        color: white !important;
         padding: 0.8rem 1.5rem;
         border-radius: 25px;
         font-weight: 600;
@@ -152,11 +164,29 @@ st.markdown("""
         padding: 3rem;
         margin: 2rem 0;
         box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        color: #1f2937 !important;
+    }
+    
+    .final-output * {
+        color: #1f2937 !important;
+    }
+    
+    .final-output h1, .final-output h2, .final-output h3 {
+        color: #DC2626 !important;
+    }
+    
+    .final-output strong {
+        color: #991B1B !important;
+    }
+    
+    .final-output a {
+        color: #DC2626 !important;
+        text-decoration: underline;
     }
     
     .stButton>button {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-        color: white;
+        color: white !important;
         border: none;
         padding: 0.8rem 2rem;
         border-radius: 25px;
@@ -170,6 +200,43 @@ st.markdown("""
     .stButton>button:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+    }
+    
+    /* Fix per markdown nelle chat */
+    .chat-message p, .chat-message li, .chat-message span {
+        color: #1f2937 !important;
+    }
+    
+    .chat-message h1, .chat-message h2, .chat-message h3, .chat-message h4 {
+        color: #DC2626 !important;
+    }
+    
+    /* Fix per tabelle */
+    table {
+        color: #1f2937 !important;
+    }
+    
+    th {
+        background: #DC2626 !important;
+        color: white !important;
+    }
+    
+    td {
+        color: #1f2937 !important;
+    }
+    
+    /* Fix per expander debug */
+    .streamlit-expanderHeader {
+        color: #1f2937 !important;
+    }
+    
+    .streamlit-expanderContent {
+        color: #1f2937 !important;
+    }
+    
+    /* Fix generale per tutto il testo dell'app */
+    .stMarkdown {
+        color: #1f2937 !important;
     }
 </style>
 """, unsafe_allow_html=True)
