@@ -630,21 +630,6 @@ def main():
             else:
                 st.error("Impossibile caricare il catalogo.")
                 st.stop()
-    
-    # ===== FASE UPLOAD =====
-    if st.session_state.phase == "upload":
-        st.markdown("""
-        <div class="upload-section">
-            <h2>Carica la Foto della Torta</h2>
-            <p>Inizia caricando un'immagine della torta che vuoi realizzare</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        uploaded_file = st.file_uploader(
-            "Seleziona immagine",
-            type=["jpg", "jpeg", "png", "webp"],
-            label_visibility="collapsed"
-        )
         
 # ===== FASE UPLOAD =====
     if st.session_state.phase == "upload":
