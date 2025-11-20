@@ -648,46 +648,47 @@ def main():
             label_visibility="collapsed"
         )
         
-if uploaded_file:
-    # Contenitore centrato stretto
-    st.markdown('<div class="upload-container">', unsafe_allow_html=True)
-    
-    # Immagine centrata
-    st.image(uploaded_file, use_container_width=True)
-    
-    # Spaziatura
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Info centrata
-    st.markdown("### ✅ Immagine Pronta")
-    st.markdown("Clicca il pulsante per iniziare l'analisi AI")
-    
-    # Pulsante centrato in colonna
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
-            st.session_state.cake_image = uploaded_file
-            st.session_state.image_base64 = encode_image_to_base64(uploaded_file)
+        if uploaded_file:
+            # Contenitore centrato
+            st.markdown('<div class="upload-container">', unsafe_allow_html=True)
             
-            with st.spinner("Analisi in corso..."):
-                products_text = prepare_products_for_ai(st.session_state.products_catalog)
-                initial_prompt = create_initial_analysis_prompt(products_text)
-                
-                analysis = call_gpt_vision(
-                    client,
-                    st.session_state.image_base64,
-                    initial_prompt
-                )
-                
-                if analysis:
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": analysis
-                    })
-                    st.session_state.phase = "conversation"
-                    st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+            # Immagine centrata
+            st.image(uploaded_file, use_container_width=True)
+            
+            # Spaziatura
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Info centrata
+            st.markdown("### ✅ Immagine Pronta")
+            st.markdown("Clicca il pulsante per iniziare l'analisi AI")
+            
+            # Pulsante centrato in colonna
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
+                    st.session_state.cake_image = uploaded_file
+                    st.session_state.image_base64 = encode_image_to_base64(uploaded_file)
+                    
+                    with st.spinner("Analisi in corso..."):
+                        products_text = prepare_products_for_ai(st.session_state.products_catalog)
+                        initial_prompt = create_initial_analysis_prompt(products_text)
+                        
+                        analysis = call_gpt_vision(
+                            client,
+                            st.session_state.image_base64,
+                            initial_prompt
+                        )
+                        
+                        if analysis:
+                            st.session_state.messages.append({
+                                "role": "assistant",
+                                "content": analysis
+                            })
+                            st.session_state.phase = "conversation"
+                            st.rerun()
+            
+            # Chiusura contenitore
+            st.markdown('</div>', unsafe_allow_html=True)
     
     # ===== FASE CONVERSAZIONE (SEMPRE ATTIVA) =====
     elif st.session_state.phase == "conversation":
