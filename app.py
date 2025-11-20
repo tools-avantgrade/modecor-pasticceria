@@ -60,6 +60,23 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
+    /* CONTENITORE CENTRALE - Limita larghezza */
+    .main .block-container {
+        max-width: 900px !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        margin: 0 auto !important;
+    }
+    
+    /* Su mobile, usa tutta la larghezza */
+    @media (max-width: 768px) {
+        .main .block-container {
+            max-width: 100% !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+    }
+    
     .main-title {
         color: #DC2626;
         text-align: center;
