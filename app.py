@@ -60,7 +60,7 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* CONTENITORE CENTRALE - Limita larghezza */
+    /* ===== CONTENITORE CENTRALE - Tutto centrato ===== */
     .main .block-container {
         max-width: 900px !important;
         padding-left: 2rem !important;
@@ -77,6 +77,7 @@ st.markdown("""
         }
     }
     
+    /* ===== HEADER ===== */
     .main-title {
         color: #DC2626;
         text-align: center;
@@ -92,28 +93,75 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
+    /* ===== SEZIONE UPLOAD - Centrata ===== */
     .upload-section {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-        padding: 3rem;
+        padding: 2.5rem 2rem;
         border-radius: 16px;
         text-align: center;
         color: white;
-        margin: 2rem 0;
+        margin: 1.5rem auto;
+        max-width: 700px;
         box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
     }
     
     .upload-section h2 {
-        margin: 0 0 1rem 0;
-        font-size: 1.8rem;
+        margin: 0 0 0.8rem 0;
+        font-size: 1.6rem;
         font-weight: 600;
     }
     
     .upload-section p {
         margin: 0;
         opacity: 0.9;
+        font-size: 0.95rem;
     }
     
-    /* Output finale dentro la chat */
+    /* ===== FILE UPLOADER - Centrato ===== */
+    [data-testid="stFileUploader"] {
+        max-width: 600px;
+        margin: 1rem auto !important;
+    }
+    
+    /* ===== IMMAGINE ANTEPRIMA - Dimensione fissa piccola ===== */
+    [data-testid="stImage"] {
+        max-width: 400px !important;
+        margin: 0 auto !important;
+    }
+    
+    [data-testid="stImage"] img {
+        max-width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* Colonne upload - centrate */
+    .stColumns {
+        gap: 2rem !important;
+    }
+    
+    /* ===== SIDEBAR - Immagine piccola ===== */
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        max-width: 100% !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stImage"] img {
+        max-height: 300px !important;
+        border-radius: 8px;
+    }
+    
+    [data-testid="stSidebar"] {
+        background: #f9fafb;
+    }
+    
+    /* ===== CHAT MESSAGES ===== */
+    .stChatMessage {
+        max-width: 100%;
+    }
+    
+    /* ===== OUTPUT FINALE ===== */
     .final-guide {
         background: white;
         border-radius: 12px;
@@ -211,7 +259,7 @@ st.markdown("""
         margin: 2rem 0;
     }
     
-    /* Pulsanti */
+    /* ===== PULSANTI ===== */
     .stButton>button {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
         color: white;
@@ -235,7 +283,7 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Badge fase */
+    /* ===== BADGE FASE ===== */
     .phase-badge {
         display: inline-block;
         background: linear-gradient(90deg, #DC2626 0%, #991B1B 100%);
@@ -248,9 +296,32 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
     }
     
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: #f9fafb;
+    /* ===== RESPONSIVE - Mobile ===== */
+    @media (max-width: 768px) {
+        .upload-section {
+            max-width: 100%;
+            padding: 2rem 1.5rem;
+        }
+        
+        [data-testid="stImage"] {
+            max-width: 100% !important;
+        }
+        
+        [data-testid="stImage"] img {
+            max-height: 300px;
+        }
+        
+        .final-guide {
+            padding: 1.5rem;
+        }
+        
+        .final-guide h1 {
+            font-size: 1.5rem;
+        }
+        
+        .final-guide h2 {
+            font-size: 1.2rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
