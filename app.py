@@ -646,21 +646,24 @@ def main():
             label_visibility="collapsed"
         )
         
-        if uploaded_file:
-            # Contenitore centrato
-            st.markdown('<div class="upload-container">', unsafe_allow_html=True)
+             if uploaded_file:
+            # Spazio prima
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            # Immagine centrata in colonne
-            col_left, col_center, col_right = st.columns([0.5, 3, 0.5])
-            with col_center:
-                st.image(uploaded_file, use_container_width=False, width=450)
+            # Immagine in 3 colonne [1,1,1] - centrale
+            col_a, col_b, col_c = st.columns([1, 1, 1])
+            with col_b:
+                st.image(uploaded_file, use_container_width=True)
             
-            # Info centrata
-            st.markdown("### ✅ Immagine Pronta")
-            st.markdown("Clicca il pulsante per iniziare l'analisi AI")
+            # Spazio dopo
+            st.markdown("<br>", unsafe_allow_html=True)
             
-            # Pulsante centrato
-            col1, col2, col3 = st.columns([1, 2, 1])
+            # Testo centrato
+            st.markdown("<h3 style='text-align: center; color: #DC2626;'>✅ Immagine Pronta</h3>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center; color: #6b7280;'>Clicca il pulsante per iniziare l'analisi AI</p>", unsafe_allow_html=True)
+            
+            # Pulsante in 3 colonne [1,1,1] - centrale
+            col1, col2, col3 = st.columns([1, 1, 1])
             with col2:
                 if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
                     st.session_state.cake_image = uploaded_file
