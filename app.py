@@ -111,69 +111,11 @@ st.markdown("""
         font-weight: 600;
     }
     
-.upload-section p {
-    margin: 0;
-    opacity: 0.9;
-    font-size: 0.95rem;
-}
-
-/* ===== CONTENITORE UPLOAD - Centrato e stretto ===== */
-.upload-container {
-    max-width: 600px;
-    margin: 2rem auto;
-}
-
-.upload-container [data-testid="column"] {
-    padding: 0 1rem;
-}
-
-/* Immagine nella sezione upload */
-.upload-container [data-testid="stImage"] img {
-    max-height: 350px !important;
-    width: 100%;
-    object-fit: contain;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    margin-bottom: 1rem;
-}
-
-/* Testo centrato */
-.upload-container h3 {
-    color: #DC2626;
-    margin: 1.5rem 0 0.5rem 0;
-    font-size: 1.3rem;
-    text-align: center;
-}
-
-.upload-container p {
-    color: #6b7280;
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-/* Markdown centrato */
-.upload-container .stMarkdown {
-    text-align: center;
-}
-/* Testo nella sezione upload */
-.upload-info {
-    background: #f9fafb;
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 2px solid #e5e7eb;
-    text-align: center;
-}
-
-.upload-info h3 {
-    color: #DC2626;
-    margin-bottom: 1rem;
-    font-size: 1.3rem;
-}
-
-.upload-info p {
-    color: #6b7280;
-    margin-bottom: 1.5rem;
-}
+    .upload-section p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
     
     /* ===== FILE UPLOADER - Centrato ===== */
     [data-testid="stFileUploader"] {
@@ -181,10 +123,54 @@ st.markdown("""
         margin: 1rem auto !important;
     }
     
-    /* ===== IMMAGINE ANTEPRIMA - Dimensione fissa piccola ===== */
-    [data-testid="stImage"] {
-        max-width: 400px !important;
+    /* ===== CONTENITORE UPLOAD - Centrato ===== */
+    .upload-container {
+        max-width: 600px;
+        margin: 2rem auto;
+        text-align: center;
+    }
+    
+    /* Immagine centrata */
+    .upload-container [data-testid="stImage"] {
+        display: block !important;
+        margin: 0 auto 1.5rem auto !important;
+        text-align: center !important;
+    }
+    
+    .upload-container [data-testid="stImage"] img {
+        max-height: 400px !important;
+        max-width: 500px !important;
+        width: auto !important;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: block;
         margin: 0 auto !important;
+    }
+    
+    /* Titolo e testo centrati */
+    .upload-container h3 {
+        color: #DC2626;
+        margin: 1.5rem 0 0.5rem 0;
+        font-size: 1.3rem;
+        text-align: center;
+    }
+    
+    .upload-container p {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .upload-container .stMarkdown {
+        text-align: center !important;
+    }
+    
+    /* ===== IMMAGINI GENERALI ===== */
+    [data-testid="stImage"] {
+        max-width: 500px !important;
+        margin: 0 auto !important;
+        display: block !important;
     }
     
     [data-testid="stImage"] img {
@@ -193,11 +179,8 @@ st.markdown("""
         object-fit: contain;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    /* Colonne upload - centrate */
-    .stColumns {
-        gap: 2rem !important;
+        margin: 0 auto;
+        display: block;
     }
     
     /* ===== SIDEBAR - Immagine piccola ===== */
@@ -361,11 +344,8 @@ st.markdown("""
             padding: 2rem 1.5rem;
         }
         
-        [data-testid="stImage"] {
+        .upload-container [data-testid="stImage"] img {
             max-width: 100% !important;
-        }
-        
-        [data-testid="stImage"] img {
             max-height: 300px;
         }
         
@@ -670,17 +650,16 @@ def main():
             # Contenitore centrato
             st.markdown('<div class="upload-container">', unsafe_allow_html=True)
             
-            # Immagine centrata
-            st.image(uploaded_file, use_container_width=True)
-            
-            # Spaziatura
-            st.markdown("<br>", unsafe_allow_html=True)
+            # Immagine centrata in colonne
+            col_left, col_center, col_right = st.columns([0.5, 3, 0.5])
+            with col_center:
+                st.image(uploaded_file, use_container_width=False, width=450)
             
             # Info centrata
             st.markdown("### ✅ Immagine Pronta")
             st.markdown("Clicca il pulsante per iniziare l'analisi AI")
             
-            # Pulsante centrato in colonna
+            # Pulsante centrato
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
                 if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
