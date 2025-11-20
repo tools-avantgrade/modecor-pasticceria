@@ -3,7 +3,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import urllib3
 import base64
-from anthropic import Anthropic
+from openai import OpenAI
 import json
 from typing import List, Dict, Optional
 import time
@@ -28,8 +28,8 @@ MODECOR_API_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
 MODECOR_PASSWORD = "#M0d3CoR2025!"
 
-# Claude API - Usa secrets.toml o variabile d'ambiente
-ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
+# OpenAI API - Usa secrets.toml o variabile d'ambiente
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -262,8 +262,6 @@ if "cake_image" not in st.session_state:
     st.session_state.cake_image = None
 if "image_base64" not in st.session_state:
     st.session_state.image_base64 = None
-if "image_media_type" not in st.session_state:
-    st.session_state.image_media_type = None
 if "products_catalog" not in st.session_state:
     st.session_state.products_catalog = None
 if "conversation_data" not in st.session_state:
@@ -272,8 +270,8 @@ if "phase" not in st.session_state:
     st.session_state.phase = "upload"  # upload -> analysis -> conversation -> final
 if "initial_analysis" not in st.session_state:
     st.session_state.initial_analysis = None
-if "claude_messages" not in st.session_state:
-    st.session_state.claude_messages = []
+if "gpt_messages" not in st.session_state:
+    st.session_state.gpt_messages = []
 
 # -------------------------------------------------
 # FUNZIONI API MODECOR
@@ -300,12 +298,12 @@ def fetch_modecor_products() -> Optional[List[Dict]]:
         st.error(f"❌ Errore connessione API Modecor: {e}")
         return None
 
-def prepare_products_for_ai(products: List[Dict], max_products: int = 1000) -> str:
-    """Prepara il catalogo prodotti in formato ottimizzato per Claude"""
+def prepare_products_for_ai(products: List[Dict], max_products: int = 1500) -> str:
+    """Prepara il catalogo prodotti in formato ottimizzato per GPT"""
     if not products:
         return "Nessun prodotto disponibile."
     
-    # Prendi solo i primi max_products per evitare overflow
+    # Prendi max_products per evitare overflow token
     products_subset = products[:max_products]
     
     # Crea rappresentazione compatta
@@ -320,35 +318,21 @@ def prepare_products_for_ai(products: List[Dict], max_products: int = 1000) -> s
     return catalog_text
 
 # -------------------------------------------------
-# FUNZIONI CLAUDE API
+# FUNZIONI OPENAI GPT-4 VISION
 # -------------------------------------------------
-def init_claude_client() -> Optional[Anthropic]:
-    """Inizializza client Anthropic"""
-    if not ANTHROPIC_API_KEY:
-        st.error("⚠️ **API Key Anthropic mancante!** Configurala in `.streamlit/secrets.toml`:")
-        st.code('[default]\nANTHROPIC_API_KEY = "sk-ant-..."')
+def init_openai_client() -> Optional[OpenAI]:
+    """Inizializza client OpenAI"""
+    if not OPENAI_API_KEY:
+        st.error("⚠️ **API Key OpenAI mancante!** Configurala in `.streamlit/secrets.toml`:")
+        st.code('[default]\nOPENAI_API_KEY = "sk-proj-..."')
         return None
-    return Anthropic(api_key=ANTHROPIC_API_KEY)
+    return OpenAI(api_key=OPENAI_API_KEY)
 
-def encode_image_to_base64(uploaded_file) -> tuple:
-    """Converte immagine caricata in base64 e determina media type"""
+def encode_image_to_base64(uploaded_file) -> str:
+    """Converte immagine caricata in base64 per OpenAI"""
     image_bytes = uploaded_file.getvalue()
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
-    
-    # Determina media type
-    file_type = uploaded_file.type
-    if file_type == "image/jpeg" or file_type == "image/jpg":
-        media_type = "image/jpeg"
-    elif file_type == "image/png":
-        media_type = "image/png"
-    elif file_type == "image/webp":
-        media_type = "image/webp"
-    elif file_type == "image/gif":
-        media_type = "image/gif"
-    else:
-        media_type = "image/jpeg"  # Default
-    
-    return base64_image, media_type
+    return base64_image
 
 def create_initial_analysis_prompt(products_catalog: str) -> str:
     """Crea il prompt per l'analisi iniziale dell'immagine"""
@@ -594,48 +578,49 @@ Non dimenticare di personalizzare la tua creazione con il tuo logo!
 - Linguaggio tecnico ma chiaro
 - Formato Markdown professionale"""
 
-def call_claude_vision(client: Anthropic, image_base64: str, media_type: str, prompt: str) -> Optional[str]:
-    """Chiama Claude con visione per analizzare l'immagine"""
+def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[str]:
+    """Chiama GPT-4 Vision per analizzare l'immagine"""
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
+        response = client.chat.completions.create(
+            model="gpt-4o",  # gpt-4o ha vision integrata ed è più veloce
             messages=[
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_base64,
-                            },
-                        },
-                        {
                             "type": "text",
                             "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}",
+                                "detail": "high"  # Alta qualità per analisi dettagliata
+                            }
                         }
-                    ],
+                    ]
                 }
             ],
+            max_tokens=4096,
+            temperature=0.7
         )
-        return message.content[0].text
+        return response.choices[0].message.content
     except Exception as e:
-        st.error(f"❌ Errore chiamata Claude Vision: {e}")
+        st.error(f"❌ Errore chiamata GPT-4 Vision: {e}")
         return None
 
-def call_claude_conversation(client: Anthropic, messages: List[Dict]) -> Optional[str]:
-    """Chiama Claude per conversazione testuale"""
+def call_gpt_conversation(client: OpenAI, messages: List[Dict]) -> Optional[str]:
+    """Chiama GPT-4 per conversazione testuale"""
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
             max_tokens=4096,
-            messages=messages
+            temperature=0.7
         )
-        return response.content[0].text
+        return response.choices[0].message.content
     except Exception as e:
-        st.error(f"❌ Errore chiamata Claude: {e}")
+        st.error(f"❌ Errore chiamata GPT-4: {e}")
         return None
 
 # -------------------------------------------------
@@ -666,8 +651,8 @@ def get_conversation_history() -> str:
         history += f"\n{role}: {msg['content']}\n"
     return history
 
-def create_claude_messages_history() -> List[Dict]:
-    """Crea la lista di messaggi per Claude API"""
+def create_gpt_messages_history() -> List[Dict]:
+    """Crea la lista di messaggi per GPT API"""
     messages = []
     for msg in st.session_state.messages:
         messages.append({
@@ -685,8 +670,8 @@ def main():
     st.markdown('<p class="subtitle">Il tuo assistente intelligente per decorazioni professionali</p>', 
                 unsafe_allow_html=True)
     
-    # Inizializza Claude Client
-    client = init_claude_client()
+    # Inizializza OpenAI Client
+    client = init_openai_client()
     if not client:
         st.stop()
     
@@ -729,20 +714,18 @@ def main():
                 if st.button("🚀 Analizza Torta", use_container_width=True):
                     # Salva immagine
                     st.session_state.cake_image = uploaded_file
-                    base64_img, media_type = encode_image_to_base64(uploaded_file)
+                    base64_img = encode_image_to_base64(uploaded_file)
                     st.session_state.image_base64 = base64_img
-                    st.session_state.image_media_type = media_type
                     
                     # Prepara catalogo per AI
                     products_text = prepare_products_for_ai(st.session_state.products_catalog)
                     
-                    # Analisi iniziale
-                    with st.spinner("🔍 Analisi in corso con Claude Vision AI..."):
+                    # Analisi iniziale con GPT-4 Vision
+                    with st.spinner("🔍 Analisi in corso con GPT-4 Vision..."):
                         initial_prompt = create_initial_analysis_prompt(products_text)
-                        analysis = call_claude_vision(
+                        analysis = call_gpt_vision(
                             client,
                             st.session_state.image_base64,
-                            st.session_state.image_media_type,
                             initial_prompt
                         )
                         
@@ -790,22 +773,21 @@ def main():
             conversation_history = get_conversation_history()
             conversation_prompt = create_conversation_prompt(conversation_history, products_text)
             
-            # Prepara messaggi Claude
-            claude_msgs = create_claude_messages_history()
-            claude_msgs.append({
+            # Prepara messaggi GPT
+            gpt_msgs = create_gpt_messages_history()
+            gpt_msgs.append({
                 "role": "user",
                 "content": conversation_prompt
             })
             
-            # Chiamata Claude
+            # Chiamata GPT-4
             with st.spinner("🤔 Modecor AI sta pensando..."):
-                response = call_claude_conversation(client, claude_msgs)
+                response = call_gpt_conversation(client, gpt_msgs)
                 
                 if response:
                     add_message("assistant", response)
                     
                     # Verifica se è ora di generare output finale
-                    # Logica semplice: se abbiamo >12 messaggi e l'utente conferma
                     if len(st.session_state.messages) > 12:
                         if any(word in user_input.lower() for word in ["sì", "si", "ok", "perfetto", "va bene", "procedi", "genera"]):
                             st.session_state.phase = "final"
@@ -843,12 +825,12 @@ def main():
             # Genera output finale
             final_prompt = create_final_output_prompt(conversation_summary, products_text)
             
-            claude_msgs = [{
+            gpt_msgs = [{
                 "role": "user",
                 "content": final_prompt
             }]
             
-            final_output = call_claude_conversation(client, claude_msgs)
+            final_output = call_gpt_conversation(client, gpt_msgs)
             
             if final_output:
                 st.markdown('<div class="final-output">', unsafe_allow_html=True)
@@ -860,7 +842,7 @@ def main():
                 
                 with col1:
                     st.download_button(
-                        label="📥 Scarica PDF",
+                        label="📥 Scarica Ricetta",
                         data=final_output,
                         file_name="modecor_ricetta.md",
                         mime="text/markdown"
