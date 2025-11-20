@@ -60,7 +60,6 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* ===== CONTENITORE CENTRALE - Tutto centrato ===== */
     .main .block-container {
         max-width: 700px !important;
         padding-left: 2rem !important;
@@ -643,7 +642,7 @@ def main():
         if uploaded_file:
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Immagine centrata, uso tutta la larghezza del container
+            # Immagine centrata
             st.image(uploaded_file, use_container_width=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
@@ -672,7 +671,6 @@ def main():
                                 "content": analysis
                             })
                             st.session_state.phase = "conversation"
-                            # forziamo il rerun in modo compatibile
                             try:
                                 st.rerun()
                             except Exception:
@@ -691,7 +689,6 @@ def main():
             st.metric("Messaggi", len(st.session_state.messages))
             
             if st.button("Nuova Torta", use_container_width=True):
-                # reset controllato dello stato
                 for key in ["messages", "cake_image", "image_base64",
                             "products_catalog", "phase",
                             "guide_generated", "all_info_collected"]:
@@ -710,8 +707,27 @@ def main():
             with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🧁"):
                 content = msg["content"].replace("[INFO_COMPLETE]", "").strip()
                 
+                # --- FIX FORMATTAZIONE GUIDA FINALE ---
                 if '<div class="final-guide">' in content:
-                    st.markdown(content, unsafe_allow_html=True)
+                    start_tag = '<div class="final-guide">'
+                    end_tag = '</div>'
+                    start_idx = content.find(start_tag)
+                    end_idx = content.rfind(end_tag)
+                    
+                    if start_idx != -1:
+                        inner_start = start_idx + len(start_tag)
+                        if end_idx != -1:
+                            inner_text = content[inner_start:end_idx].strip()
+                        else:
+                            inner_text = content[inner_start:].strip()
+                        
+                        # wrapper HTML + markdown interno
+                        st.markdown(start_tag, unsafe_allow_html=True)
+                        st.markdown(inner_text)
+                        st.markdown(end_tag, unsafe_allow_html=True)
+                    else:
+                        # fallback se per qualche motivo non trova i tag
+                        st.markdown(content, unsafe_allow_html=True)
                 else:
                     st.markdown(content)
         
