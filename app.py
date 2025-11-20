@@ -60,9 +60,9 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* ===== CONTENITORE CENTRALE - Tutto centrato ===== */
+    /* ===== CONTENITORE CENTRALE - Chat verticale stretta ===== */
     .main .block-container {
-        max-width: 900px !important;
+        max-width: 700px !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         margin: 0 auto !important;
@@ -101,7 +101,7 @@ st.markdown("""
         text-align: center;
         color: white;
         margin: 1.5rem auto;
-        max-width: 700px;
+        max-width: 100%;
         box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
     }
     
@@ -119,13 +119,13 @@ st.markdown("""
     
     /* ===== FILE UPLOADER - Centrato ===== */
     [data-testid="stFileUploader"] {
-        max-width: 600px;
+        max-width: 100%;
         margin: 1rem auto !important;
     }
     
     /* ===== CONTENITORE UPLOAD - Centrato ===== */
     .upload-container {
-        max-width: 600px;
+        max-width: 100%;
         margin: 2rem auto;
         text-align: center;
     }
@@ -139,7 +139,7 @@ st.markdown("""
     
     .upload-container [data-testid="stImage"] img {
         max-height: 400px !important;
-        max-width: 500px !important;
+        max-width: 100% !important;
         width: auto !important;
         object-fit: contain;
         border-radius: 12px;
@@ -168,7 +168,7 @@ st.markdown("""
     
     /* ===== IMMAGINI GENERALI ===== */
     [data-testid="stImage"] {
-        max-width: 500px !important;
+        max-width: 100% !important;
         margin: 0 auto !important;
         display: block !important;
     }
@@ -197,9 +197,10 @@ st.markdown("""
         background: #f9fafb;
     }
     
-    /* ===== CHAT MESSAGES ===== */
+    /* ===== CHAT MESSAGES - Verticale stretta ===== */
     .stChatMessage {
         max-width: 100%;
+        margin-bottom: 1rem;
     }
     
     /* ===== OUTPUT FINALE ===== */
@@ -379,6 +380,8 @@ if "phase" not in st.session_state:
     st.session_state.phase = "upload"
 if "guide_generated" not in st.session_state:
     st.session_state.guide_generated = False
+if "all_info_collected" not in st.session_state:
+    st.session_state.all_info_collected = False
 
 # -------------------------------------------------
 # FUNZIONI API MODECOR
@@ -462,6 +465,9 @@ DOMANDE DA FARE (una alla volta):
 6. Allergie o ingredienti da evitare?
 
 Fai UNA domanda alla volta. Sii breve e conversazionale.
+
+IMPORTANTE: Quando hai raccolto TUTTE le informazioni (persone, occasione, tipo decorazioni, colori, gusto, allergie), 
+termina il tuo messaggio con la frase esatta: "[INFO_COMPLETE]"
 
 NON generare la guida finale. Fai solo domande finché non hai tutte le info.
 
@@ -590,6 +596,10 @@ def create_gpt_messages_history() -> List[Dict]:
     return [{"role": msg["role"], "content": msg["content"]} 
             for msg in st.session_state.messages]
 
+def check_if_info_complete(response: str) -> bool:
+    """Controlla se AI ha raccolto tutte le info"""
+    return "[INFO_COMPLETE]" in response
+
 def generate_final_guide(client: OpenAI, products_text: str):
     """Genera e mostra guida finale nella chat"""
     conversation_summary = get_conversation_history()
@@ -631,7 +641,7 @@ def main():
                 st.error("Impossibile caricare il catalogo.")
                 st.stop()
         
-# ===== FASE UPLOAD =====
+    # ===== FASE UPLOAD =====
     if st.session_state.phase == "upload":
         st.markdown("""
         <div class="upload-section">
@@ -650,10 +660,8 @@ def main():
             # Spazio prima
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Immagine in 3 colonne [1,1,1] - centrale
-            col_a, col_b, col_c = st.columns([1, 1, 1])
-            with col_b:
-                st.image(uploaded_file, use_container_width=True)
+            # Immagine centrata
+            st.image(uploaded_file, use_container_width=True)
             
             # Spazio dopo
             st.markdown("<br>", unsafe_allow_html=True)
@@ -662,8 +670,8 @@ def main():
             st.markdown("<h3 style='text-align: center; color: #DC2626;'>✅ Immagine Pronta</h3>", unsafe_allow_html=True)
             st.markdown("<p style='text-align: center; color: #6b7280;'>Clicca il pulsante per iniziare l'analisi AI</p>", unsafe_allow_html=True)
             
-            # Pulsante in 3 colonne [1,1,1] - centrale
-            col1, col2, col3 = st.columns([1, 1, 1])
+            # Pulsante centrato
+            col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
                 if st.button("🚀 Analizza Torta", use_container_width=True, type="primary"):
                     st.session_state.cake_image = uploaded_file
@@ -686,11 +694,8 @@ def main():
                             })
                             st.session_state.phase = "conversation"
                             st.rerun()
-            
-            # Chiusura contenitore
-            st.markdown('</div>', unsafe_allow_html=True)
     
-    # ===== FASE CONVERSAZIONE (SEMPRE ATTIVA) =====
+    # ===== FASE CONVERSAZIONE =====
     elif st.session_state.phase == "conversation":
         # Sidebar
         with st.sidebar:
@@ -711,10 +716,12 @@ def main():
         # Mostra tutti i messaggi
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🧁"):
-                st.markdown(msg["content"], unsafe_allow_html=True)
+                # Rimuovi il marker [INFO_COMPLETE] dalla visualizzazione
+                content = msg["content"].replace("[INFO_COMPLETE]", "").strip()
+                st.markdown(content, unsafe_allow_html=True)
         
-        # Pulsante genera guida (dopo 6+ messaggi)
-        if len(st.session_state.messages) >= 6 and not st.session_state.guide_generated:
+        # Pulsante genera guida (SOLO se tutte le info sono state raccolte)
+        if st.session_state.all_info_collected and not st.session_state.guide_generated:
             st.markdown('<div class="generate-btn">', unsafe_allow_html=True)
             if st.button("✨ Genera Guida Completa", use_container_width=True, type="primary"):
                 with st.spinner("Creazione guida personalizzata..."):
@@ -747,7 +754,14 @@ def main():
                     response = call_gpt_conversation(client, gpt_msgs)
                     
                     if response:
-                        st.markdown(response)
+                        # Controlla se tutte le info sono state raccolte
+                        if check_if_info_complete(response):
+                            st.session_state.all_info_collected = True
+                        
+                        # Mostra risposta senza il marker
+                        display_response = response.replace("[INFO_COMPLETE]", "").strip()
+                        st.markdown(display_response)
+                        
                         st.session_state.messages.append({
                             "role": "assistant",
                             "content": response
