@@ -188,6 +188,8 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
+    /* La classe final-guide rimane disponibile se in futuro
+       vorrai usare direttamente HTML per la guida */
     .final-guide {
         background: white;
         border-radius: 12px;
@@ -195,6 +197,7 @@ st.markdown("""
         margin: 1rem 0;
         border: 2px solid #DC2626;
         box-shadow: 0 2px 8px rgba(220, 38, 38, 0.1);
+        color: #111827;
     }
     
     .final-guide h1 {
@@ -460,7 +463,7 @@ CATALOGO:
 
 def create_final_output_prompt(conversation_summary: str, products_catalog: str) -> str:
     """Prompt output finale"""
-    return f"""Genera una guida completa seguendo ESATTAMENTE questo formato HTML:
+    return f"""Genera una guida completa seguendo ESATTAMENTE questo formato:
 
 <div class="final-guide">
 
@@ -510,10 +513,9 @@ def create_final_output_prompt(conversation_summary: str, products_catalog: str)
 </div>
 
 **REGOLE:**
-- USA SOLO prodotti con URL dal catalogo
+- Mantieni il wrapper <div class="final-guide"> ma usa Markdown all'interno
 - Dosi precise in grammi/ml
 - NO emoji
-- Formato Markdown dentro HTML
 
 CONVERSAZIONE:
 {conversation_summary}
@@ -707,27 +709,22 @@ def main():
             with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🧁"):
                 content = msg["content"].replace("[INFO_COMPLETE]", "").strip()
                 
-                # --- FIX FORMATTAZIONE GUIDA FINALE ---
+                # Se è la guida finale, togli i tag <div class="final-guide">...</div>
                 if '<div class="final-guide">' in content:
                     start_tag = '<div class="final-guide">'
                     end_tag = '</div>'
                     start_idx = content.find(start_tag)
-                    end_idx = content.rfind(end_tag)
-                    
                     if start_idx != -1:
                         inner_start = start_idx + len(start_tag)
+                        end_idx = content.rfind(end_tag)
                         if end_idx != -1:
                             inner_text = content[inner_start:end_idx].strip()
                         else:
                             inner_text = content[inner_start:].strip()
-                        
-                        # wrapper HTML + markdown interno
-                        st.markdown(start_tag, unsafe_allow_html=True)
-                        st.markdown(inner_text)
-                        st.markdown(end_tag, unsafe_allow_html=True)
                     else:
-                        # fallback se per qualche motivo non trova i tag
-                        st.markdown(content, unsafe_allow_html=True)
+                        inner_text = content
+                    # Mostro solo il markdown interno, senza wrapper bianco vuoto
+                    st.markdown(inner_text)
                 else:
                     st.markdown(content)
         
