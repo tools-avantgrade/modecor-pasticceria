@@ -718,7 +718,12 @@ def main():
             with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🧁"):
                 # Rimuovi il marker [INFO_COMPLETE] dalla visualizzazione
                 content = msg["content"].replace("[INFO_COMPLETE]", "").strip()
-                st.markdown(content, unsafe_allow_html=True)
+                
+                # Se il messaggio contiene la guida finale (con <div class="final-guide">)
+                if '<div class="final-guide">' in content:
+                    st.markdown(content, unsafe_allow_html=True)
+                else:
+                    st.markdown(content)
         
         # Pulsante genera guida (SOLO se tutte le info sono state raccolte)
         if st.session_state.all_info_collected and not st.session_state.guide_generated:
