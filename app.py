@@ -28,8 +28,13 @@ MODECOR_API_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
 MODECOR_PASSWORD = "#M0d3CoR2025!"
 
-# OpenAI API - Usa secrets.toml o variabile d'ambiente
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
+# OpenAI API - Legge da Streamlit Cloud Secrets
+try:
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+except KeyError:
+    OPENAI_API_KEY = ""
+except FileNotFoundError:
+    OPENAI_API_KEY = ""
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
