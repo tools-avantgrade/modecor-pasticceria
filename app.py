@@ -1,84 +1,880 @@
+import streamlit as st
 import requests
 from requests.auth import HTTPBasicAuth
 import urllib3
-import streamlit as st
+import base64
+from anthropic import Anthropic
+import json
+from typing import List, Dict, Optional
+import time
 
 # -------------------------------------------------
-# DISABILITA WARNING SSL INSECURE (necessario con verify=False)
+# CONFIGURAZIONE
 # -------------------------------------------------
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# -------------------------------------------------
-# CONFIGURAZIONE STREAMLIT
-# -------------------------------------------------
 st.set_page_config(
-    page_title="Modecor API Viewer",
-    page_icon="🧁",
+    page_title="Modecor AI Assistant",
+    page_icon="🎂",
     layout="wide",
-)
-
-st.title("Modecor – Lettura prodotti via API")
-st.write(
-    "Clicca il pulsante qui sotto per chiamare l'API "
-    "`it-get-products.php` di Modecor con autenticazione Basic."
+    initial_sidebar_state="collapsed"
 )
 
 # -------------------------------------------------
-# CREDENZIALI API MODECOR
+# CREDENZIALI API
 # -------------------------------------------------
-MODECOR_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
+# API Modecor
+MODECOR_API_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
 MODECOR_USERNAME = "modecorapis"
 MODECOR_PASSWORD = "#M0d3CoR2025!"
 
-# User-Agent “da browser” per evitare blocchi del firewall
+# Claude API - Usa secrets.toml o variabile d'ambiente
+ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
+
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    )
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
-
-def call_modecor_products():
-    return requests.get(
-        MODECOR_URL,
-        auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
-        headers=HEADERS,
-        timeout=30,
-        verify=False,
-    )
-
+# -------------------------------------------------
+# CSS PERSONALIZZATO MODECOR
+# -------------------------------------------------
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .main-title {
+        color: #DC2626;
+        text-align: center;
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .subtitle {
+        text-align: center;
+        color: #666;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .upload-section {
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+        padding: 3rem;
+        border-radius: 20px;
+        text-align: center;
+        color: white;
+        margin: 2rem 0;
+        box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
+    }
+    
+    .chat-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .chat-message {
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .user-message {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        border-left: 5px solid #DC2626;
+    }
+    
+    .assistant-message {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-left: 5px solid #FCD34D;
+    }
+    
+    .analysis-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+        border: 3px solid #DC2626;
+        box-shadow: 0 5px 20px rgba(220, 38, 38, 0.2);
+    }
+    
+    .product-card {
+        background: white;
+        border: 2px solid #FCD34D;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
+        border-color: #DC2626;
+    }
+    
+    .product-title {
+        color: #DC2626;
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .product-link {
+        display: inline-block;
+        background: #DC2626;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-top: 0.5rem;
+    }
+    
+    .product-link:hover {
+        background: #991B1B;
+        transform: scale(1.05);
+    }
+    
+    .step-section {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
+        border-left: 5px solid #FCD34D;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+    }
+    
+    .step-number {
+        display: inline-block;
+        background: #DC2626;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 40px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+    }
+    
+    .phase-indicator {
+        background: linear-gradient(90deg, #DC2626 0%, #991B1B 100%);
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 600;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+    }
+    
+    .final-output {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        margin: 2rem 0;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    
+    .ingredient-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+    }
+    
+    .ingredient-table th {
+        background: #DC2626;
+        color: white;
+        padding: 1rem;
+        text-align: left;
+    }
+    
+    .ingredient-table td {
+        padding: 0.8rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.3rem 0.8rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+    
+    .badge-exact {
+        background: #10b981;
+        color: white;
+    }
+    
+    .badge-alternative {
+        background: #f59e0b;
+        color: white;
+    }
+    
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .stButton>button {
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+        color: white;
+        border: none;
+        padding: 0.8rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+    }
+    
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------------------------------------
-# UI STREAMLIT: PULSANTE CHIAMATA API
+# INIZIALIZZAZIONE STATO SESSIONE
 # -------------------------------------------------
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "cake_image" not in st.session_state:
+    st.session_state.cake_image = None
+if "image_base64" not in st.session_state:
+    st.session_state.image_base64 = None
+if "image_media_type" not in st.session_state:
+    st.session_state.image_media_type = None
+if "products_catalog" not in st.session_state:
+    st.session_state.products_catalog = None
+if "conversation_data" not in st.session_state:
+    st.session_state.conversation_data = {}
+if "phase" not in st.session_state:
+    st.session_state.phase = "upload"  # upload -> analysis -> conversation -> final
+if "initial_analysis" not in st.session_state:
+    st.session_state.initial_analysis = None
+if "claude_messages" not in st.session_state:
+    st.session_state.claude_messages = []
 
-st.subheader("Chiamata API prodotti")
+# -------------------------------------------------
+# FUNZIONI API MODECOR
+# -------------------------------------------------
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_modecor_products() -> Optional[List[Dict]]:
+    """Recupera tutti i prodotti Modecor via API con caching"""
+    try:
+        response = requests.get(
+            MODECOR_API_URL,
+            auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
+            headers=HEADERS,
+            timeout=60,
+            verify=False
+        )
+        
+        if response.status_code == 200:
+            products = json.loads(response.text)
+            return products
+        else:
+            st.error(f"❌ Errore API Modecor: Status {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"❌ Errore connessione API Modecor: {e}")
+        return None
 
-if st.button("🔄 Chiama API Modecor"):
-    with st.spinner("Chiamata in corso..."):
-        try:
-            resp = call_modecor_products()
+def prepare_products_for_ai(products: List[Dict], max_products: int = 1000) -> str:
+    """Prepara il catalogo prodotti in formato ottimizzato per Claude"""
+    if not products:
+        return "Nessun prodotto disponibile."
+    
+    # Prendi solo i primi max_products per evitare overflow
+    products_subset = products[:max_products]
+    
+    # Crea rappresentazione compatta
+    catalog_text = "# CATALOGO PRODOTTI MODECOR\n\n"
+    catalog_text += f"Totale prodotti disponibili: {len(products_subset)}\n\n"
+    
+    for i, prod in enumerate(products_subset, 1):
+        catalog_text += f"{i}. **{prod.get('titolo', 'N/A')}**\n"
+        catalog_text += f"   - Descrizione: {prod.get('descrizione', 'N/A')}\n"
+        catalog_text += f"   - URL: {prod.get('url', 'N/A')}\n\n"
+    
+    return catalog_text
 
-            st.markdown(f"**HTTP status code:** `{resp.status_code}`")
+# -------------------------------------------------
+# FUNZIONI CLAUDE API
+# -------------------------------------------------
+def init_claude_client() -> Optional[Anthropic]:
+    """Inizializza client Anthropic"""
+    if not ANTHROPIC_API_KEY:
+        st.error("⚠️ **API Key Anthropic mancante!** Configurala in `.streamlit/secrets.toml`:")
+        st.code('[default]\nANTHROPIC_API_KEY = "sk-ant-..."')
+        return None
+    return Anthropic(api_key=ANTHROPIC_API_KEY)
 
-            if resp.status_code == 200:
-                st.success("Prodotti ricevuti! Ecco TUTTA la risposta dell’API.")
-                
-                # MOSTRA TUTTO IL TESTO SENZA TRONCARE NIENTE
-                st.markdown("### Output completo dell'API:")
-                st.text_area(
-                    "Risultato API (scrollabile)",
-                    value=resp.text,
-                    height=700,   # altezza regolabile
-                )
+def encode_image_to_base64(uploaded_file) -> tuple:
+    """Converte immagine caricata in base64 e determina media type"""
+    image_bytes = uploaded_file.getvalue()
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # Determina media type
+    file_type = uploaded_file.type
+    if file_type == "image/jpeg" or file_type == "image/jpg":
+        media_type = "image/jpeg"
+    elif file_type == "image/png":
+        media_type = "image/png"
+    elif file_type == "image/webp":
+        media_type = "image/webp"
+    elif file_type == "image/gif":
+        media_type = "image/gif"
+    else:
+        media_type = "image/jpeg"  # Default
+    
+    return base64_image, media_type
 
+def create_initial_analysis_prompt(products_catalog: str) -> str:
+    """Crea il prompt per l'analisi iniziale dell'immagine"""
+    return f"""Sei l'assistente AI ufficiale di Modecor, azienda leader italiana per decorazioni da pasticceria.
+
+# TUO COMPITO
+Analizza l'immagine della torta caricata e fornisci un'analisi dettagliata iniziale.
+
+# ANALISI RICHIESTA
+Identifica e descrivi:
+
+1. **Tipo di torta**: (es. drip cake, naked cake, wedding cake, number cake, cream tart, ecc.)
+2. **Stile generale**: (moderno, classico, rustico, elegante, minimal, ecc.)
+3. **Palette colori dominanti**: elenca i colori principali usati
+4. **Elementi decorativi visibili**: 
+   - Topper (soggetti, scritte, candeline)
+   - Fiori (tipo, colori, dimensioni)
+   - Perline, glitter, sprinkles
+   - Drip (colore e tipo)
+   - Texture o pattern
+   - Altri elementi decorativi
+5. **Tecniche riconosciute**:
+   - Tipo di copertura (fondente, crema, ganache, mirror glaze, ecc.)
+   - Aerografo o colorazione
+   - Stencil o decorazioni a mano
+   - Modellazione 3D
+6. **Dimensioni stimate**: numero di piani, diametro approssimativo
+7. **Complessità**: livello di difficoltà (base/intermedio/esperto)
+
+# CATALOGO PRODOTTI MODECOR
+{products_catalog}
+
+# FORMATO OUTPUT
+Rispondi in italiano con un'analisi chiara e professionale. Usa questo formato:
+
+🎂 **Tipo di Torta**: [tipo]
+
+🎨 **Stile**: [descrizione stile]
+
+🌈 **Colori Dominanti**: [lista colori]
+
+✨ **Elementi Decorativi**:
+- [elemento 1]
+- [elemento 2]
+- ...
+
+🛠️ **Tecniche Utilizzate**:
+- [tecnica 1]
+- [tecnica 2]
+- ...
+
+📏 **Dimensioni Stimate**: [descrizione]
+
+⭐ **Livello Complessità**: [base/intermedio/esperto]
+
+Poi chiedi conferma: "Confermi che questa è la tipologia di torta che vuoi realizzare?"
+
+**IMPORTANTE**: Sii preciso e dettagliato. Questa analisi servirà per le domande successive."""
+
+def create_conversation_prompt(conversation_history: str, products_catalog: str) -> str:
+    """Crea il prompt per la conversazione guidata"""
+    return f"""Sei l'assistente AI ufficiale di Modecor per pasticcieri professionisti.
+
+# CATALOGO PRODOTTI MODECOR DISPONIBILI
+{products_catalog}
+
+# FLUSSO CONVERSAZIONALE DA SEGUIRE
+
+## FASE 1 – Inquadramento Iniziale
+Fai queste domande per capire esigenze e contesto:
+
+### Estetica e Decorazioni
+1. **Colori specifici?** → Se sì, proponi coloranti Modecor (Colorgel per glasse/pasta di zucchero, ColorVel/ColorSoft per -18°C)
+2. **È per una ricorrenza?** (Compleanno, matrimonio, Natale, Halloween, San Valentino, ecc.)
+3. **Se compleanno → Servono candeline?** → Se sì, fornisci link: https://www.modecoritaliana.it/it/tutti-i-prodotti/ricorrenze/auguri-generici.html?cat=25&product_list_dir=desc
+4. **Materiale decorazione preferito?** (Zucchero / Cialda / Cioccolato)
+
+### Gusto e Ingredienti
+5. **Torta +4°C (fresca) o -18°C (semifreddo)?**
+   - +4°C: quote cake, lambeth, naked, chiffon, pasta di zucchero
+   - -18°C: semifreddi glassati, torte gelato
+6. **Che tipo di torta?** (moderna, tradizionale, decorata, monoporzione)
+7. **Preferenze di gusto?** (cioccolato, frutta, vaniglia, nocciola, ecc.)
+8. **Allergie o ingredienti da evitare?**
+9. **Per quante persone?**
+
+## FASE 2 – Scelta Decorazioni Dettagliata
+
+Dopo la Fase 1, in base alla risposta "Materiale decorazione":
+
+### Se "Zucchero":
+- Vuoi un **fiore** o un **soggettino**?
+  - **Fiore**: tipo (rosa/generico/ghiaccia) → colore → dimensione (0-2cm / 2-3.5cm / 3.5-5cm / >5cm)
+  - **Soggettino**: piatto o 3D?
+    - Se 3D: generico o a tema/brand? (Natale, Halloween, Thun, Sonic, Peppa Pig, ecc.)
+
+### Se "Cialda":
+- **Per bambino o adulto?**
+  - Bambino → cialde brandizzate (Sonic, Peppa Pig, ecc.)
+  - Adulto → fiori (come flusso zucchero)
+
+### Se "Cioccolato":
+- **Tipo cioccolato**: fondente / bianco / colorato
+- **Tipo decorazione**: piatta / 3D
+
+### Extra Finale:
+"Vuoi integrare con decorazioni easy?" → Suggerisci: macarons, sprinkles, golden touch, meringhe
+
+## FINALE:
+"Ora che la tua torta è bellissima, non dimenticare di metterci sopra il tuo logo con un personalizzato 👉 [Mettici la firma](https://www.modecoritaliana.it/mettici-la-firma)"
+
+# STORIA CONVERSAZIONE
+{conversation_history}
+
+# REGOLE IMPORTANTI
+- Fai UNA domanda alla volta, massimo DUE se strettamente correlate
+- Sii amichevole e professionale
+- Usa emoji per rendere la chat più piacevole
+- Se l'utente ha già risposto a qualcosa, NON chiederlo di nuovo
+- Suggerisci prodotti Modecor SOLO dal catalogo fornito sopra
+- Usa sempre i link completi presenti nel catalogo
+- Rispondi in italiano
+
+# TUO COMPITO ADESSO
+Continua la conversazione seguendo il flusso. Fai la prossima domanda appropriata o, se hai tutte le informazioni, passa alla generazione dell'output finale."""
+
+def create_final_output_prompt(conversation_summary: str, products_catalog: str) -> str:
+    """Crea il prompt per l'output finale completo"""
+    return f"""Sei l'assistente AI ufficiale di Modecor. Hai raccolto tutte le informazioni necessarie.
+
+# INFORMAZIONI RACCOLTE
+{conversation_summary}
+
+# CATALOGO PRODOTTI MODECOR
+{products_catalog}
+
+# TUO COMPITO
+Genera l'OUTPUT FINALE COMPLETO seguendo questa struttura ESATTA:
+
+---
+
+# [TITOLO DESCRITTIVO DELLA TORTA]
+
+[Descrizione estetica e stilistica della torta in 2-3 frasi]
+
+---
+
+## 🛍️ PRODOTTI MODECOR DA UTILIZZARE
+
+[Per ogni prodotto, crea una card con questo formato:]
+
+### [NOME PRODOTTO]
+**Descrizione d'uso**: [come si usa nella torta]  
+**Link prodotto**: [URL completo dal catalogo]  
+**Badge**: [ESATTO ✅ o ALTERNATIVA 🔶]
+
+[Includi da 5 a 10 prodotti pertinenti. SOLO prodotti presenti nel catalogo fornito!]
+
+---
+
+## 🥄 INGREDIENTI AGGIUNTIVI (non Modecor)
+
+- [Ingrediente 1 con quantità precisa in grammi]
+- [Ingrediente 2 con quantità precisa]
+- ...
+
+---
+
+## 👨‍🍳 PROCEDURA COMPLETA STEP-BY-STEP
+
+### **1️⃣ Preparazione della Base**
+- Tipo impasto: [Pan di Spagna/Chiffon/Biscuit/ecc.] 
+- Dosi precise in grammi
+- Diametro e numero strati
+- Temperatura e tempi di cottura
+
+### **2️⃣ Farcitura e Assemblaggio**
+- Tipo crema/mousse con quantità
+- Metodo di stratificazione
+- Bagne o inserti
+- Tempi di raffreddamento
+
+### **3️⃣ Copertura**
+- Tecnica usata (fondente/panna/ganache/mirror glaze/ecc.)
+- Coloranti Modecor specifici e applicazione
+- Strumenti necessari
+- Temperature ideali
+
+### **4️⃣ Decorazione e Finitura**
+- Elenco prodotti Modecor usati con posizionamento
+- Sequenza di applicazione dettagliata
+- Tempi di asciugatura tra passaggi
+
+### **5️⃣ Presentazione Finale**
+- Disposizione su vassoio
+- Nastri o bordure
+- Condizioni di conservazione
+- Temperatura di servizio
+
+---
+
+## 📊 TABELLA RIEPILOGO
+
+### Ingredienti Base
+| Ingrediente | Quantità |
+|-------------|----------|
+| [Nome] | [Quantità] |
+| ... | ... |
+
+### Utensili Necessari
+- [Utensile 1]
+- [Utensile 2]
+- ...
+
+### Informazioni Aggiuntive
+- ⏱️ **Tempo totale**: [tempo]
+- ⭐ **Difficoltà**: [Base/Intermedio/Esperto]
+- 🚫 **Allergeni**: [lista o "Nessuno noto"]
+- 🍰 **Porzioni**: [numero]
+
+---
+
+## 💡 CONSIGLI PROFESSIONALI
+
+- [Consiglio 1]
+- [Consiglio 2]
+- [Varianti possibili]
+
+---
+
+## ✨ TOCCO FINALE MODECOR
+
+Non dimenticare di personalizzare la tua creazione con il tuo logo!  
+👉 **[Mettici la firma](https://www.modecoritaliana.it/mettici-la-firma)**
+
+---
+
+# REGOLE CRITICHE
+- USA SOLO prodotti presenti nel CATALOGO fornito sopra
+- Includi SEMPRE gli URL completi esatti dal catalogo
+- NON inventare prodotti o link
+- Dosi PRECISE in grammi/ml/cm
+- Linguaggio tecnico ma chiaro
+- Formato Markdown professionale"""
+
+def call_claude_vision(client: Anthropic, image_base64: str, media_type: str, prompt: str) -> Optional[str]:
+    """Chiama Claude con visione per analizzare l'immagine"""
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_base64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ],
+                }
+            ],
+        )
+        return message.content[0].text
+    except Exception as e:
+        st.error(f"❌ Errore chiamata Claude Vision: {e}")
+        return None
+
+def call_claude_conversation(client: Anthropic, messages: List[Dict]) -> Optional[str]:
+    """Chiama Claude per conversazione testuale"""
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            messages=messages
+        )
+        return response.content[0].text
+    except Exception as e:
+        st.error(f"❌ Errore chiamata Claude: {e}")
+        return None
+
+# -------------------------------------------------
+# FUNZIONI UI
+# -------------------------------------------------
+def display_chat_messages():
+    """Mostra tutti i messaggi della chat"""
+    for msg in st.session_state.messages:
+        role = msg["role"]
+        content = msg["content"]
+        
+        if role == "user":
+            st.markdown(f'<div class="chat-message user-message">👤 <strong>Tu:</strong><br>{content}</div>', 
+                       unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="chat-message assistant-message">🎂 <strong>Modecor AI:</strong><br>{content}</div>', 
+                       unsafe_allow_html=True)
+
+def add_message(role: str, content: str):
+    """Aggiunge un messaggio alla chat"""
+    st.session_state.messages.append({"role": role, "content": content})
+
+def get_conversation_history() -> str:
+    """Ottiene la storia della conversazione come stringa"""
+    history = ""
+    for msg in st.session_state.messages:
+        role = "Utente" if msg["role"] == "user" else "Modecor AI"
+        history += f"\n{role}: {msg['content']}\n"
+    return history
+
+def create_claude_messages_history() -> List[Dict]:
+    """Crea la lista di messaggi per Claude API"""
+    messages = []
+    for msg in st.session_state.messages:
+        messages.append({
+            "role": msg["role"],
+            "content": msg["content"]
+        })
+    return messages
+
+# -------------------------------------------------
+# MAIN APP
+# -------------------------------------------------
+def main():
+    # Header
+    st.markdown('<h1 class="main-title">🎂 Modecor AI Assistant</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Il tuo assistente intelligente per decorazioni professionali</p>', 
+                unsafe_allow_html=True)
+    
+    # Inizializza Claude Client
+    client = init_claude_client()
+    if not client:
+        st.stop()
+    
+    # Carica catalogo prodotti
+    if st.session_state.products_catalog is None:
+        with st.spinner("🔄 Caricamento catalogo Modecor..."):
+            products = fetch_modecor_products()
+            if products:
+                st.session_state.products_catalog = products
+                st.success(f"✅ Catalogo caricato: {len(products)} prodotti disponibili")
             else:
-                st.error(f"Errore: status code {resp.status_code}")
-                st.code(resp.text, language="html")
+                st.error("❌ Impossibile caricare il catalogo prodotti. Riprova più tardi.")
+                st.stop()
+    
+    # ===== FASE 1: UPLOAD IMMAGINE =====
+    if st.session_state.phase == "upload":
+        st.markdown("""
+        <div class="upload-section">
+            <h2>📸 Carica la Foto della Torta</h2>
+            <p>Inizia caricando un'immagine della torta che vuoi realizzare</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader(
+            "Seleziona un'immagine (JPG, PNG, WEBP)",
+            type=["jpg", "jpeg", "png", "webp"],
+            help="Carica una foto chiara della torta che vuoi ricreare"
+        )
+        
+        if uploaded_file:
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.image(uploaded_file, caption="Immagine caricata", use_container_width=True)
+            
+            with col2:
+                st.markdown("### ✅ Immagine pronta!")
+                st.markdown("Clicca il pulsante per iniziare l'analisi AI")
+                
+                if st.button("🚀 Analizza Torta", use_container_width=True):
+                    # Salva immagine
+                    st.session_state.cake_image = uploaded_file
+                    base64_img, media_type = encode_image_to_base64(uploaded_file)
+                    st.session_state.image_base64 = base64_img
+                    st.session_state.image_media_type = media_type
+                    
+                    # Prepara catalogo per AI
+                    products_text = prepare_products_for_ai(st.session_state.products_catalog)
+                    
+                    # Analisi iniziale
+                    with st.spinner("🔍 Analisi in corso con Claude Vision AI..."):
+                        initial_prompt = create_initial_analysis_prompt(products_text)
+                        analysis = call_claude_vision(
+                            client,
+                            st.session_state.image_base64,
+                            st.session_state.image_media_type,
+                            initial_prompt
+                        )
+                        
+                        if analysis:
+                            st.session_state.initial_analysis = analysis
+                            add_message("assistant", analysis)
+                            st.session_state.phase = "conversation"
+                            st.rerun()
+    
+    # ===== FASE 2: CONVERSAZIONE =====
+    elif st.session_state.phase == "conversation":
+        # Mostra immagine in sidebar
+        with st.sidebar:
+            if st.session_state.cake_image:
+                st.image(st.session_state.cake_image, caption="Torta da realizzare", use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 📊 Stato")
+            st.markdown(f"✅ {len(st.session_state.messages)} messaggi scambiati")
+            
+            if st.button("🔄 Ricomincia", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        
+        # Chat container
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        
+        # Mostra fase attuale
+        st.markdown('<div class="phase-indicator">💬 Conversazione in Corso - Flusso Guidato Modecor</div>', 
+                   unsafe_allow_html=True)
+        
+        # Mostra messaggi
+        display_chat_messages()
+        
+        # Input utente
+        user_input = st.chat_input("Scrivi la tua risposta...")
+        
+        if user_input:
+            # Aggiungi messaggio utente
+            add_message("user", user_input)
+            
+            # Prepara prompt conversazione
+            products_text = prepare_products_for_ai(st.session_state.products_catalog)
+            conversation_history = get_conversation_history()
+            conversation_prompt = create_conversation_prompt(conversation_history, products_text)
+            
+            # Prepara messaggi Claude
+            claude_msgs = create_claude_messages_history()
+            claude_msgs.append({
+                "role": "user",
+                "content": conversation_prompt
+            })
+            
+            # Chiamata Claude
+            with st.spinner("🤔 Modecor AI sta pensando..."):
+                response = call_claude_conversation(client, claude_msgs)
+                
+                if response:
+                    add_message("assistant", response)
+                    
+                    # Verifica se è ora di generare output finale
+                    # Logica semplice: se abbiamo >12 messaggi e l'utente conferma
+                    if len(st.session_state.messages) > 12:
+                        if any(word in user_input.lower() for word in ["sì", "si", "ok", "perfetto", "va bene", "procedi", "genera"]):
+                            st.session_state.phase = "final"
+            
+            st.rerun()
+        
+        # Pulsante genera output (se conversazione avanzata)
+        if len(st.session_state.messages) > 10:
+            st.markdown("---")
+            if st.button("✨ Genera Output Finale Completo", use_container_width=True):
+                st.session_state.phase = "final"
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # ===== FASE 3: OUTPUT FINALE =====
+    elif st.session_state.phase == "final":
+        with st.sidebar:
+            if st.session_state.cake_image:
+                st.image(st.session_state.cake_image, caption="Torta da realizzare", use_container_width=True)
+            
+            if st.button("🔄 Nuova Torta", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        
+        st.markdown('<div class="phase-indicator">✨ Generazione Output Finale...</div>', 
+                   unsafe_allow_html=True)
+        
+        with st.spinner("🎂 Sto creando la tua guida completa personalizzata..."):
+            # Prepara summary conversazione
+            conversation_summary = get_conversation_history()
+            products_text = prepare_products_for_ai(st.session_state.products_catalog)
+            
+            # Genera output finale
+            final_prompt = create_final_output_prompt(conversation_summary, products_text)
+            
+            claude_msgs = [{
+                "role": "user",
+                "content": final_prompt
+            }]
+            
+            final_output = call_claude_conversation(client, claude_msgs)
+            
+            if final_output:
+                st.markdown('<div class="final-output">', unsafe_allow_html=True)
+                st.markdown(final_output, unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Pulsanti azione
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.download_button(
+                        label="📥 Scarica PDF",
+                        data=final_output,
+                        file_name="modecor_ricetta.md",
+                        mime="text/markdown"
+                    )
+                
+                with col2:
+                    if st.button("📧 Invia via Email", use_container_width=True):
+                        st.info("Funzionalità in arrivo!")
+                
+                with col3:
+                    if st.button("🔄 Nuova Torta", use_container_width=True):
+                        for key in list(st.session_state.keys()):
+                            del st.session_state[key]
+                        st.rerun()
 
-        except Exception as e:
-            st.error(f"Errore durante la chiamata: {e}")
-else:
-    st.info("Premi il pulsante per effettuare la chiamata all'API Modecor.")
+if __name__ == "__main__":
+    main()
