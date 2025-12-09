@@ -527,7 +527,7 @@ def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[
     """GPT-4 Vision"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{
                 "role": "user",
                 "content": [
@@ -536,7 +536,7 @@ def call_gpt_vision(client: OpenAI, image_base64: str, prompt: str) -> Optional[
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/jpeg;base64,{image_base64}",
-                            "detail": "high"
+                            "detail": "auto"
                         }
                     }
                 ]
@@ -554,7 +554,7 @@ def call_gpt_conversation(client: OpenAI, messages: List[Dict]) -> Optional[str]
     """GPT-4 conversazione"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=messages,
             max_tokens=2048,
             temperature=0.7
