@@ -580,12 +580,12 @@ def build_products_index(products):
     for prod in products:
         if not isinstance(prod, dict):
             continue
-        title = prod.get("titolo", "").strip()
+        title = (prod.get("titolo") or "").strip()
         if title:
             index[title.lower()] = {
                 "titolo": title,
-                "url": prod.get("url", ""),
-                "sku": prod.get("sku", prod.get("codice", "")),
+                "url": prod.get("url") or "",
+                "sku": prod.get("sku") or prod.get("codice") or "",
             }
     return index
 
@@ -598,8 +598,8 @@ def prepare_products_for_ai(products, max_products=1500):
     for i, prod in enumerate(products[:max_products], 1):
         if not isinstance(prod, dict):
             continue
-        title = prod.get("titolo", "").strip()
-        url = prod.get("url", "").strip()
+        title = (prod.get("titolo") or "").strip()
+        url = (prod.get("url") or "").strip()
         sku = (prod.get("sku") or prod.get("codice") or "").strip()
         if not title:
             continue
