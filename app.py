@@ -531,6 +531,8 @@ def build_products_index(products: List[Dict]) -> Dict[str, Dict]:
     """
     index = {}
     for prod in products:
+        if not isinstance(prod, dict):
+            continue
         title = prod.get("titolo", "").strip()
         if title:
             key = title.lower()
@@ -564,6 +566,8 @@ def prepare_products_for_ai(products: List[Dict], max_products: int = 1500) -> s
     catalog_text += "# SOLO questi prodotti possono essere suggeriti.\n\n"
     
     for i, prod in enumerate(products_subset, 1):
+        if not isinstance(prod, dict):
+            continue
         title = prod.get("titolo", "").strip()
         url = prod.get("url", "").strip()
         sku = prod.get("sku", prod.get("codice", "")).strip() if prod.get("sku") or prod.get("codice") else ""
