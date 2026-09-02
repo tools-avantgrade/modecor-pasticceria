@@ -23,10 +23,12 @@ st.set_page_config(
 # -------------------------------------------------
 # CREDENZIALI API
 # -------------------------------------------------
-MODECOR_API_URL = "https://www.modecoritaliana.it/tools/api/it-get-products.php"
-MODECOR_USERNAME = "modecorapis"
-MODECOR_PASSWORD = "#M0d3CoR2025!"
-
+MODECOR_API_URL = os.environ.get(
+    "MODECOR_API_URL",
+    "https://www.modecoritaliana.it/tools/api/it-get-products.php"
+)
+MODECOR_USERNAME = os.environ.get("MODECOR_USERNAME")
+MODECOR_PASSWORD = os.environ.get("MODECOR_PASSWORD")
 OPENAI_API_KEY = None
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -564,8 +566,12 @@ for key, default in [
 # -------------------------------------------------
 # FUNZIONI API
 # -------------------------------------------------
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_modecor_products():
+    if not MODECOR_USERNAME or not MODECOR_PASSWORD:
+        print("Credenziali Modecor non configurate.")
+        return None
     try:
         r = requests.get(MODECOR_API_URL, auth=HTTPBasicAuth(MODECOR_USERNAME, MODECOR_PASSWORD),
                          headers=HEADERS, timeout=60, verify=False)
